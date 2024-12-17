@@ -396,3 +396,13 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+/NewsArticleProcessingApp/NewsArticleWorker/Properties/ServiceDependencies/NewsArticleWorker - Zip Deploy
+/NewsArticleProcessingApp/NewsArticleWorker/Properties/ServiceDependencies/NewsArticleWorker - Zip Deploy1
+/NewsArticleProcessingApp/NewsArticleWorker/Properties/ServiceDependencies/NewsArticleWorker - Zip Deploy2
+/NewsArticleProcessingApp/NewsArticleWorker/Properties/serviceDependencies.NewsArticleWorker - Zip Deploy.json
+/NewsArticleProcessingApp/NewsArticleWorker/Properties/serviceDependencies.NewsArticleWorker - Zip Deploy1.json
+/NewsArticleProcessingApp/NewsArticleWorker/Properties/serviceDependencies.NewsArticleWorker - Zip Deploy2.json
+/NewsArticleProcessingApp/NewsArticleOrchestrator/Properties/ServiceDependencies/NewsArticleOrchestrator - Zip Deploy
+/NewsArticleProcessingApp/NewsArticleOrchestrator/Properties/ServiceDependencies/NewsArticleOrchestrator - Zip Deploy1
+/NewsArticleProcessingApp/NewsArticleOrchestrator/Properties/serviceDependencies.NewsArticleOrchestrator - Zip Deploy.json
+/NewsArticleProcessingApp/NewsArticleOrchestrator/Properties/serviceDependencies.NewsArticleOrchestrator - Zip Deploy1.json
