@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "NewsArticleOrchestrator": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7187",
+      "launchBrowser": false
+    }
+  }
+}
