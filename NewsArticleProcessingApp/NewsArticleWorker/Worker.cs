@@ -1,14 +1,13 @@
-using System.Text;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using HtmlAgilityPack;
 using Common.Lib;
 using Newtonsoft.Json;
+using Microsoft.Extensions.Logging;
 
 public class Worker
 {
@@ -25,19 +24,19 @@ public class Worker
 
     private readonly IMongoClient _mongoClient;
     private readonly TelemetryClient _telemetryClient;
-
-    private string serviceBusConnectionString = Environment.GetEnvironmentVariable("ServiceBusConnectionString")!;
-    private string queueName = Environment.GetEnvironmentVariable("QueueName")!;
-    private string databaseName = Environment.GetEnvironmentVariable("DatabaseName")!;
-    private string dbConn = Environment.GetEnvironmentVariable("CosmosDBMongoConnectionString")!;
+        
+    private string databaseName = Environment.GetEnvironmentVariable("DatabaseName")!;    
     private string country = string.Empty;
     int proxyCallCountForCountry = 0; // Track proxy calls for the current country
     private readonly ScraperStatusRepository _repository;
-    public Worker(IMongoClient mongoClient, TelemetryClient telemetryClient, ScraperStatusRepository repository)
+    private readonly ServiceBusClient _serviceBusClient;
+
+    public Worker(IMongoClient mongoClient, TelemetryClient telemetryClient, ScraperStatusRepository repository, ServiceBusClient serviceBusClient)
     {
         _mongoClient = mongoClient;
         _telemetryClient = telemetryClient;
         _repository = repository;
+        _serviceBusClient = serviceBusClient;
     }
 
     [Function("Worker")]
@@ -45,47 +44,89 @@ public class Worker
     [ServiceBusTrigger("scraping-queue", Connection = "ServiceBusConnectionString")] ServiceBusReceivedMessage message,
     FunctionContext context)
     {
-        string country = string.Empty; // Initialize country to handle scope issues
+        var logger = context.GetLogger("Worker");
+        string country = string.Empty;
+
+        // Use CancellationToken to handle long-running tasks
+        var cancellationToken = context.CancellationToken;
+
         try
         {
-            // Deserialize the message to get the required data
-            var messageBody = message.Body.ToString();
-            var taskData = JsonConvert.DeserializeObject<Dictionary<string, string>>(messageBody);
-            country = taskData["Country"]!;
-            string countrySlug = taskData["CountrySlug"];
+            // Deserialize the message body
+            var taskData = JsonConvert.DeserializeObject<Dictionary<string, string>>(message.Body.ToString());
+            if (taskData == null || !taskData.TryGetValue("Country", out country!) || !taskData.TryGetValue("CountrySlug", out var countrySlug))
+            {
+                logger.LogError($"Invalid message format: {message.Body}");
+                return; // Exit function gracefully
+            }
 
-            LogTrace($"Processing scraping task for {country}");
+            logger.LogInformation($"Processing scraping task for {country}");
 
-            // Update the processing state to "running"
+            // Start a task to renew the message lock periodically
+            var renewLockTask = RenewLockPeriodicallyAsync(message, cancellationToken);
+
+            // Update processing state to "Running"
             await _repository.UpsertProcessingStateAsync(country, "Running", proxyCallCountForCountry.ToString());
 
-            // Call the process country-specific scraping logic
+            // Perform country-specific scraping logic
             await ScrapeGoogleNewsByCountry(country, countrySlug);
 
-            // Update the processing state to "completed"
+            // Update processing state to "Completed"
             await _repository.UpsertProcessingStateAsync(country, "Completed", proxyCallCountForCountry.ToString());
 
-            LogTrace($"Successfully processed message for {country}.");
+            logger.LogInformation($"Successfully processed message for {country}.");
+
+            // Stop lock renewal after processing completes
+            cancellationToken.ThrowIfCancellationRequested();
         }
         catch (Exception ex)
         {
-            LogException(ex, $"Error processing scraping task for {country}");
+            logger.LogError(ex, $"Error processing scraping task for {country}");
 
-            // If the exception is transient, let the runtime retry the message.
-            if (ShouldRetry(ex))
-            {
-                LogTrace($"Message for {message.MessageId} will be retried.");
-                throw; // Let the Service Bus trigger handle retries
-            }
-
-            // If the error is non-recoverable, log and update state
-            LogTrace($"Message for {message.MessageId} is non-recoverable: {ex.Message}");
+            // Update processing state to "Failed" if the country is available
             if (!string.IsNullOrEmpty(country))
             {
-                await _repository.UpsertProcessingStateAsync(country, "Failed", proxyCallCountForCountry.ToString());
+                try
+                {
+                    await _repository.UpsertProcessingStateAsync(country, "Failed", proxyCallCountForCountry.ToString());
+                }
+                catch (Exception updateEx)
+                {
+                    logger.LogError(updateEx, $"Failed to update processing state to 'Failed' for {country}");
+                }
             }
+
+            throw; // Re-throw the exception to trigger retry or dead-lettering
         }
     }
+
+    private async Task RenewLockPeriodicallyAsync(ServiceBusReceivedMessage message, CancellationToken cancellationToken)
+    {
+        var receiver = _serviceBusClient.CreateReceiver("scraping-queue");
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await receiver.RenewMessageLockAsync(message, cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken); // Adjust the interval as needed
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Expected when the operation is canceled
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error renewing message lock: {ex.Message}");
+        }
+        finally
+        {
+            await receiver.CloseAsync();
+        }
+    }
+
+
 
     public async Task ScrapeGoogleNewsByCountry(string country, string countrySlug)
     {        
@@ -327,7 +368,7 @@ public class Worker
                             if (existingRecord != null)
                             {
                                 DateTime existingTimestamp = DateTime.Parse(existingRecord["created"].ToString()!);
-                                DateTime lastModifiedTimeStamp = DateTime.Parse(lastModifiedDate);
+                                DateTime lastModifiedTimeStamp = DateTime.Parse(lastModifiedDate!);
 
                                 if (existingTimestamp >= lastModifiedTimeStamp)
                                 {
@@ -375,7 +416,7 @@ public class Worker
             LogException(ex, $"An error occurred while parsing the story: {storyUrl}");
         }
     }
-    public async Task<Dictionary<string, object>> GetExistingRecordByUrl(string newsUrl, string countrySlug)
+    public async Task<Dictionary<string, object>?> GetExistingRecordByUrl(string newsUrl, string countrySlug)
     {
         try
         {
@@ -512,16 +553,11 @@ public class Worker
         });
     }
 
-    // A method to determine if the exception is transient and should be retried
-    private bool ShouldRetry(Exception ex)
-    {
-        // Example: Check if exception is transient (you can customize this logic as needed)
-        return ex is TimeoutException || ex is ServiceBusException;
-    }
+  
 
     // Method definitions for ScrapeGoogleNewsByCountry, ParseCategory, ParseStory, and MongoDB operations remain unchanged
 
-    public async Task<string> SendRequest(string url, Dictionary<string, string> proxies, Dictionary<string, string> parameters = null)
+    public async Task<string?> SendRequest(string url, Dictionary<string, string> proxies, Dictionary<string, string>? parameters = null)
     {
         try
         {

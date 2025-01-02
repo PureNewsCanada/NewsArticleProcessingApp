@@ -49,7 +49,7 @@ namespace NewsArticleOrchestrator
                 {
                     // Check the current processing state from MongoDB
                     var currentState = await _repository.GetProcessingStateAsync(country);
-                    if (currentState == "Initiate" || currentState == "Completed")
+                    if (currentState == "Initiate" || currentState == "Completed" || currentState == "Failed")
                     {
                         var taskMessage = new Dictionary<string, string>
                         {

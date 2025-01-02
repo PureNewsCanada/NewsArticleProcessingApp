@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using MongoDB.Driver;
 using Common.Lib;
+using Azure.Messaging.ServiceBus;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -13,6 +14,9 @@ var builder = FunctionsApplication.CreateBuilder(args);
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 {
     var cosmosConnectionString = builder.Configuration["CosmosDBMongoConnectionString"];
+    var mongoClientSettings = MongoClientSettings.FromConnectionString(cosmosConnectionString);
+    mongoClientSettings.MaxConnectionPoolSize = 100; // Increase this number as needed
+    mongoClientSettings.WaitQueueSize = 100; // Increase wait queue size
     if (string.IsNullOrEmpty(cosmosConnectionString))
     {
         throw new ArgumentException("CosmosDBMongoConnectionString not configured.");
@@ -20,6 +24,11 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
     return new MongoClient(cosmosConnectionString);
 });
 
+builder.Services.AddSingleton(serviceProvider =>
+{
+    var connectionString = builder.Configuration["ServiceBusConnectionString"];
+    return new ServiceBusClient(connectionString);
+});
 // Register TelemetryClient with batching configuration
 builder.Services.AddSingleton(serviceProvider =>
 {
