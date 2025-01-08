@@ -8,13 +8,14 @@ using HtmlAgilityPack;
 using Common.Lib;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 public class Worker
 {
     private readonly HttpClient client = new HttpClient();
     private readonly string baseUrl = "https://news.google.com";
-    private readonly string username = "spohqr3iej";
-    private readonly string password = "nftj518JQlqPxhD0~h";
+    private readonly string username = string.Empty;
+    private readonly string password = string.Empty;    
     private readonly Dictionary<string, string> headers = new Dictionary<string, string>
     {
         { "accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7" },
@@ -27,16 +28,19 @@ public class Worker
         
     private string databaseName = Environment.GetEnvironmentVariable("DatabaseName")!;    
     private string country = string.Empty;
-    int proxyCallCountForCountry = 0; // Track proxy calls for the current country
+    static int proxyCallCountForCountry = 0; // Track proxy calls for the current country
     private readonly ScraperStatusRepository _repository;
     private readonly ServiceBusClient _serviceBusClient;
 
-    public Worker(IMongoClient mongoClient, TelemetryClient telemetryClient, ScraperStatusRepository repository, ServiceBusClient serviceBusClient)
+    public Worker(IMongoClient mongoClient, TelemetryClient telemetryClient, ScraperStatusRepository repository, ServiceBusClient serviceBusClient, IConfiguration configuration)
     {
         _mongoClient = mongoClient;
         _telemetryClient = telemetryClient;
         _repository = repository;
-        _serviceBusClient = serviceBusClient;
+        _serviceBusClient = serviceBusClient;        
+        username = configuration["ProxyUsername"]!;
+        password = configuration["ProxyPassword"]!;
+
     }
 
     [Function("Worker")]
@@ -142,8 +146,7 @@ public class Worker
 
             // Set the process state to "Running" once at the start
             await _repository.UpsertProcessingStateAsync(country, "Running", proxyCallCountForCountry.ToString());
-            isRunningStateUpdated = true;
-
+            isRunningStateUpdated = true;            
             // Get proxy for the country
             string proxy = Common.Lib.Helper.GetProxyForCountry(countrySlug, username, password);
 
@@ -155,10 +158,7 @@ public class Worker
 
             var newsUrl = $"{baseUrl}/home?gl={countrySlug}&hl=en-{countrySlug}&ceid={countrySlug}:en";
 
-            LogTrace($"Fetching news for {country} from URL: {newsUrl}");
-
-            // Increment proxy call count
-            proxyCallCountForCountry++;
+            LogTrace($"Fetching news for {country} from URL: {newsUrl}");            
 
             var response = await SendRequest(newsUrl, proxies);
             if (response == null)
@@ -192,9 +192,7 @@ public class Worker
                     if (!string.IsNullOrEmpty(menuLink) && menuLink.StartsWith("./"))
                     {
                         string menuUrl = baseUrl + menuLink.Substring(1);
-                        LogTrace($"Constructed Menu URL for {menuTitle}: {menuUrl}");
-
-                        proxyCallCountForCountry++;
+                        LogTrace($"Constructed Menu URL for {menuTitle}: {menuUrl}");                        
 
                         var item = new Dictionary<string, string>
                     {
@@ -575,6 +573,7 @@ public class Worker
             handler.UseProxy = true;
 
             var response = await client.SendAsync(requestMessage);
+            proxyCallCountForCountry++;
             return await response.Content.ReadAsStringAsync();
         }
         catch (Exception ex)

@@ -12,8 +12,7 @@ namespace NewsArticleOrchestrator
 {
     public class Orchestrator
     {
-        private readonly TelemetryClient _telemetryClient;
-        private readonly IConfiguration _configuration;
+        private readonly TelemetryClient _telemetryClient;        
         private readonly ServiceBusClient _serviceBusClient;
         private readonly ServiceBusSender _serviceBusSender;
         private readonly ScraperStatusRepository _repository;
@@ -22,9 +21,7 @@ namespace NewsArticleOrchestrator
 
         public Orchestrator(TelemetryClient telemetryClient, IConfiguration configuration, ScraperStatusRepository repository)
         {
-            _telemetryClient = telemetryClient;
-            _configuration = configuration;
-
+            _telemetryClient = telemetryClient;            
             // Read settings from configuration
             var serviceBusConnectionString = configuration["ServiceBusConnectionString"];
             _queueName = configuration["QueueName"]!;
