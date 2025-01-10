@@ -1,6 +1,7 @@
 using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -21,7 +22,7 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
     return new MongoClient(cosmosConnectionString);
 });
 
-// Register TelemetryClient with batching configuration
+// Register TelemetryClient with batching configuration and Error filtering
 builder.Services.AddSingleton(serviceProvider =>
 {
     var telemetryConfiguration = TelemetryConfiguration.CreateDefault();
@@ -43,8 +44,41 @@ builder.Services.AddSingleton(serviceProvider =>
 
     telemetryConfiguration.TelemetryChannel = inMemoryChannel;
 
+    // Add filtering to log only error-level telemetry
+    var loggingFilter = new FilteringTelemetryProcessor((item) =>
+    {
+        if (item is TraceTelemetry traceTelemetry)
+        {
+            return traceTelemetry.SeverityLevel == SeverityLevel.Error || traceTelemetry.SeverityLevel == SeverityLevel.Critical;
+        }
+        return true;
+    });
+    telemetryConfiguration.DefaultTelemetrySink.TelemetryProcessorChainBuilder.Use((next) => loggingFilter).Build();
+
     return new TelemetryClient(telemetryConfiguration);
 });
+
 builder.Services.AddSingleton<Common.Lib.ScraperStatusRepository>();
 
 builder.Build().Run();
+
+// Define FilteringTelemetryProcessor
+public class FilteringTelemetryProcessor : ITelemetryProcessor
+{
+    private readonly Func<ITelemetry, bool> _filter;
+    private readonly ITelemetryProcessor _next;
+
+    public FilteringTelemetryProcessor(Func<ITelemetry, bool> filter, ITelemetryProcessor next = null!)
+    {
+        _filter = filter ?? throw new ArgumentNullException(nameof(filter));
+        _next = next;
+    }
+
+    public void Process(ITelemetry item)
+    {
+        if (_filter(item))
+        {
+            _next.Process(item);
+        }
+    }
+}
