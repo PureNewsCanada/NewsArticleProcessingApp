@@ -1,10 +1,8 @@
-using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.Channel;
-using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.ApplicationInsights;
 using MongoDB.Driver;
 
 var builder = FunctionsApplication.CreateBuilder(args);
@@ -22,63 +20,20 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
     return new MongoClient(cosmosConnectionString);
 });
 
-// Register TelemetryClient with batching configuration and Error filtering
-builder.Services.AddSingleton(serviceProvider =>
-{
-    var telemetryConfiguration = TelemetryConfiguration.CreateDefault();
-    var connectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
-
-    if (string.IsNullOrEmpty(connectionString))
-    {
-        throw new ArgumentException("APPLICATIONINSIGHTS_CONNECTION_STRING is not configured.");
-    }
-
-    telemetryConfiguration.ConnectionString = connectionString;
-
-    // Configure batching for telemetry
-    var inMemoryChannel = new InMemoryChannel
-    {
-        MaxTelemetryBufferCapacity = 1000, // Maximum number of telemetry items to buffer
-        SendingInterval = TimeSpan.FromSeconds(15) // Frequency of sending batched telemetry
-    };
-
-    telemetryConfiguration.TelemetryChannel = inMemoryChannel;
-
-    // Add filtering to log only error-level telemetry
-    var loggingFilter = new FilteringTelemetryProcessor((item) =>
-    {
-        if (item is TraceTelemetry traceTelemetry)
-        {
-            return traceTelemetry.SeverityLevel == SeverityLevel.Error || traceTelemetry.SeverityLevel == SeverityLevel.Critical;
-        }
-        return true;
-    });
-    telemetryConfiguration.DefaultTelemetrySink.TelemetryProcessorChainBuilder.Use((next) => loggingFilter).Build();
-
-    return new TelemetryClient(telemetryConfiguration);
-});
-
+// Register the repository
 builder.Services.AddSingleton<Common.Lib.ScraperStatusRepository>();
 
+// Add Application Insights logging
+builder.Logging.AddApplicationInsights(
+    configureTelemetryConfiguration: (config) =>
+        config.ConnectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"],
+    configureApplicationInsightsLoggerOptions: (options) => { }
+);
+
+// Add a logging filter to only log error-level logs and exceptions
+builder.Logging.AddFilter<ApplicationInsightsLoggerProvider>("", LogLevel.None); // Exclude all by default
+builder.Logging.AddFilter<ApplicationInsightsLoggerProvider>("Microsoft", LogLevel.None); // Exclude system logs
+builder.Logging.AddFilter<ApplicationInsightsLoggerProvider>("NewsArticleOrchestrator", LogLevel.Error); // Log errors and above
+
+// Build and run the function app
 builder.Build().Run();
-
-// Define FilteringTelemetryProcessor
-public class FilteringTelemetryProcessor : ITelemetryProcessor
-{
-    private readonly Func<ITelemetry, bool> _filter;
-    private readonly ITelemetryProcessor _next;
-
-    public FilteringTelemetryProcessor(Func<ITelemetry, bool> filter, ITelemetryProcessor next = null!)
-    {
-        _filter = filter ?? throw new ArgumentNullException(nameof(filter));
-        _next = next;
-    }
-
-    public void Process(ITelemetry item)
-    {
-        if (_filter(item))
-        {
-            _next.Process(item);
-        }
-    }
-}

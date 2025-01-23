@@ -1,36 +1,34 @@
 using System.Text;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.Extensions.Configuration;
 using Common.Lib;
+using Microsoft.Extensions.Logging;
 
 namespace NewsArticleOrchestrator
 {
     public class Orchestrator
     {
-        private readonly TelemetryClient _telemetryClient;        
         private readonly ServiceBusClient _serviceBusClient;
         private readonly ServiceBusSender _serviceBusSender;
         private readonly ScraperStatusRepository _repository;
         private readonly string _databaseName;
         private readonly string _queueName;
+        private readonly ILogger _logger;
 
-        public Orchestrator(TelemetryClient telemetryClient, IConfiguration configuration, ScraperStatusRepository repository)
+
+        public Orchestrator(IConfiguration configuration, ScraperStatusRepository repository, ILogger<Orchestrator> logger)
         {
-            _telemetryClient = telemetryClient;            
             // Read settings from configuration
             var serviceBusConnectionString = configuration["ServiceBusConnectionString"];
             _queueName = configuration["QueueName"]!;
             _databaseName = configuration["DatabaseName"]!;
-
             // Initialize ServiceBusClient and ServiceBusSender
             _serviceBusClient = new ServiceBusClient(serviceBusConnectionString);
             _serviceBusSender = _serviceBusClient.CreateSender(_queueName);
             _repository = repository;
+            _logger = logger;
         }
 
         [Function("Orchestrator")]
@@ -64,23 +62,22 @@ namespace NewsArticleOrchestrator
                         await _serviceBusSender.SendMessageAsync(message);
 
                         // Log successful enqueue
-                        _telemetryClient.TrackTrace($"Enqueued task for {country}", SeverityLevel.Information);
-                        
+                        _logger.LogInformation($"Enqueued task for {country}");
+
                     }
                     else
                     {
                         // Log skipping message
-                        _telemetryClient.TrackTrace($"Skipping task for {country}. Current state: {currentState}", SeverityLevel.Information);
+                        _logger.LogInformation($"Skipping task for {country}. Current state: {currentState}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    // Log exceptions
-                    _telemetryClient.TrackException(ex, new Dictionary<string, string>
-                    {
-                        { "Country", country },
-                        { "Operation", "Enqueue Task" }
-                    });
+                    _logger.LogError(ex.Message.ToString(), new Dictionary<string, string>
+        {
+            { "Country", country },
+              { "Operation", "Enqueue Task" }
+        });
                 }
             }
         }
