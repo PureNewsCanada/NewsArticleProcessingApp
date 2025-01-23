@@ -472,7 +472,7 @@ public class Worker
                             { "title", tn.SelectSingleNode("./h4/a//text()")?.InnerText.Trim() ?? string.Empty },
                             { "category", item["Category"] },
                             { "provider", tn.SelectSingleNode("./div/img/following-sibling::div[1]/a//text()")?.InnerText.Trim() ?? string.Empty },
-                            { "provider_logo_url", tn.SelectSingleNode("./div/img")?.GetAttributeValue("srcset", string.Empty)?.Split(',')?.FirstOrDefault()?.Split(' ')?.FirstOrDefault()?.Trim() ??string.Empty },
+                            { "provider_logo_url", tn.SelectSingleNode("./div/img")?.GetAttributeValue("srcset", string.Empty)?.Split(',')?.FirstOrDefault()?.Split(' ')?.FirstOrDefault()?.Trim() ?? string.Empty },
                             { "text", tn.SelectSingleNode("./div//time/@datetime")?.InnerText.Trim() ?? string.Empty },
                             { "location", new BsonDocument { { "country", countrySlug }, { "city", countrySlug } } },
                             { "native_url", storyUrl },
@@ -626,6 +626,8 @@ public class Worker
                         updates.Add(updateBuilder.Set("image_url", itemDict["image_url"]));
                     if (itemDict.ContainsKey("meta"))
                         updates.Add(updateBuilder.Set("meta", itemDict["meta"]));
+                    if (itemDict.ContainsKey("provider_logo_url"))
+                        updates.Add(updateBuilder.Set("provider_logo_url", itemDict["provider_logo_url"]));
 
                     // Combine all updates
                     var update = updateBuilder.Combine(updates);
