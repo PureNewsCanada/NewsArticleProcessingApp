@@ -23,12 +23,14 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 // Register the repository
 builder.Services.AddSingleton<Common.Lib.ScraperStatusRepository>();
 
-// Add Application Insights logging
+// Configure Application Insights logging
 builder.Logging.AddApplicationInsights(
     configureTelemetryConfiguration: (config) =>
-        config.ConnectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"],
-    config.DisableTelemetry = true,
-configureApplicationInsightsLoggerOptions: (options) => { }
+    {
+        config.ConnectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+        config.DisableTelemetry = true;
+    },
+    configureApplicationInsightsLoggerOptions: (options) => { }
 );
 
 // Add a logging filter to only log error-level logs and exceptions
