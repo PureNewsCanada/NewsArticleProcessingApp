@@ -27,7 +27,8 @@ builder.Services.AddSingleton<Common.Lib.ScraperStatusRepository>();
 builder.Logging.AddApplicationInsights(
     configureTelemetryConfiguration: (config) =>
         config.ConnectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"],
-    configureApplicationInsightsLoggerOptions: (options) => { }
+    config.DisableTelemetry = true,
+configureApplicationInsightsLoggerOptions: (options) => { }
 );
 
 // Add a logging filter to only log error-level logs and exceptions

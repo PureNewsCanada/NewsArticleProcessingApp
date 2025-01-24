@@ -40,6 +40,7 @@ builder.Logging.AddApplicationInsights(
     configureTelemetryConfiguration: (config) =>
     {
         config.ConnectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+        config.DisableTelemetry = true;
     },
     configureApplicationInsightsLoggerOptions: (options) => { }
 );
