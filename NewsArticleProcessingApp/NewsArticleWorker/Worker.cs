@@ -328,7 +328,7 @@ public class Worker
             doc.LoadHtml(response);
 
             // Define the news types to search for
-            var newsTypes = new[] { "Top news" };
+            var newsTypes = new[] { "Top News", "All coverage" };
 
             foreach (var newsType in newsTypes)
             {
@@ -519,6 +519,11 @@ public class Worker
             if (articleDict.ContainsKey("image_url"))
             {
                 imgURL = articleDict["image_url"]?.ToString() ?? string.Empty;
+            }
+
+            if (title == string.Empty)
+            {
+                Console.WriteLine("");
             }
             // Prepare the topic data for insertion or update
             var itemDict = new Dictionary<string, object>
