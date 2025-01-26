@@ -248,7 +248,7 @@ public class Worker
 
             var doc = new HtmlDocument();
             doc.LoadHtml(response);
-           
+
             try
             {
                 var stories = doc.DocumentNode.SelectNodes("//a[contains(@href, './stories')]");
@@ -509,18 +509,12 @@ public class Worker
     {
         try
         {
-            // Check for existing records in the database
-            var existingRecord = await GetExistingRecordByUrl(storyUrl, TopicCollectionName);
-            if (existingRecord != null)
-            {
-                return;
-            }
             Dictionary<string, object> articleDict = await ParseStoryToGetDataforTopic(catItem, storyUrl, countrySlug, proxies, topicID);
             string title = string.Empty;
             string imgURL = string.Empty;
             if (articleDict.ContainsKey("title"))
             {
-                title = articleDict["title"]?.ToString() ?? string.Empty;                
+                title = articleDict["title"]?.ToString() ?? string.Empty;
             }
             if (articleDict.ContainsKey("image_url"))
             {
