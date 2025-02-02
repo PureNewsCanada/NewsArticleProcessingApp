@@ -328,7 +328,7 @@ public class Worker
             doc.LoadHtml(response);
 
             // Define the news types to search for
-            var newsTypes = new[] { "Top News", "All coverage" };
+            var newsTypes = new[] { "Top News", "All coverage","Top news" };
 
             foreach (var newsType in newsTypes)
             {
@@ -416,7 +416,7 @@ public class Worker
             doc.LoadHtml(response);
 
             // Define the news types to search for
-            var newsTypes = new[] { "Top news", "All coverage" };
+            var newsTypes = new[] { "Top news", "All coverage", "Top News"};
 
             foreach (var newsType in newsTypes)
             {
@@ -528,7 +528,7 @@ public class Worker
             // Prepare the topic data for insertion or update
             var itemDict = new Dictionary<string, object>
                         {
-                            { "id",topicID },
+                            { "_id",topicID },
                             { "title", title},
                             { "category", catItem["Category"] },
                             { "location", new BsonDocument { { "country", countrySlug }, { "city", countrySlug } } },
