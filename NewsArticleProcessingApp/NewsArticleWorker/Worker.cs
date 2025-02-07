@@ -479,7 +479,7 @@ public class Worker
                             { "url", newsUrl },
                             { "image_url", "https://news.google.com" + tn.SelectSingleNode("./figure/img")?.GetAttributeValue("srcset", string.Empty)?.Split(',')?.FirstOrDefault()?.Split(' ')?.FirstOrDefault()?.Trim() ?? string.Empty },
                             { "created", DateTime.UtcNow }, // Timestamp for created
-                            { "modified", lastModifiedDate ?? string.Empty },
+                            { "modified", DateTime.Parse(lastModifiedDate!) },
                             { "meta", "" }
                         };
 
