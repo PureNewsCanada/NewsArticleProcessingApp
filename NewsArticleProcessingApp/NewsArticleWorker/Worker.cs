@@ -468,7 +468,7 @@ public class Worker
                             // Prepare the story data for insertion or update
                             var itemDict = new Dictionary<string, object>
                         {
-                            { "topic",topicID ?? ObjectId.GenerateNewId().ToString() }, // Generate new ObjectId
+                            { "topic_id",topicID ?? ObjectId.GenerateNewId().ToString() }, // Generate new ObjectId
                             { "title", tn.SelectSingleNode("./h4/a//text()")?.InnerText.Trim() ?? string.Empty },
                             { "category", item["Category"] },
                             { "provider", tn.SelectSingleNode("./div/img/following-sibling::div[1]/a//text()")?.InnerText.Trim() ?? string.Empty },
@@ -478,7 +478,7 @@ public class Worker
                             { "native_url", storyUrl },
                             { "url", newsUrl },
                             { "image_url", "https://news.google.com" + tn.SelectSingleNode("./figure/img")?.GetAttributeValue("srcset", string.Empty)?.Split(',')?.FirstOrDefault()?.Split(' ')?.FirstOrDefault()?.Trim() ?? string.Empty },
-                            { "created", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ") }, // Timestamp for created
+                            { "created", DateTime.UtcNow }, // Timestamp for created
                             { "modified", lastModifiedDate ?? string.Empty },
                             { "meta", "" }
                         };
@@ -532,10 +532,10 @@ public class Worker
                             { "title", title},
                             { "category", catItem["Category"] },
                             { "location", new BsonDocument { { "country", countrySlug }, { "city", countrySlug } } },
-                            { "url", storyUrl },
+                            { "native_url", storyUrl },
                             { "image_url", imgURL},
-                            { "modified", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ") }, // Timestamp for modified
-                            { "created", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ") }, // Timestamp for created                            ,                           
+                            { "modified", DateTime.UtcNow }, // Timestamp for modified
+                            { "created", DateTime.UtcNow }, // Timestamp for created                            ,                           
                         };
 
             // Insert or update the topic in the database
