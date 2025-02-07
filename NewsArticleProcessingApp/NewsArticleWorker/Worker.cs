@@ -364,7 +364,7 @@ public class Worker
                             // Prepare the story data for insertion or update
                             itemDict = new Dictionary<string, object>
                         {
-                            { "topic", topicID ?? ObjectId.GenerateNewId().ToString() }, // Generate new ObjectId
+                            { "topic_id", topicID ?? ObjectId.GenerateNewId().ToString() }, // Generate new ObjectId
                             { "title", tn.SelectSingleNode("./h4/a//text()")?.InnerText.Trim() ?? string.Empty },
                             { "image_url", "https://news.google.com" + tn.SelectSingleNode("./figure/img")?.GetAttributeValue("srcset", string.Empty)?.Split(',')?.FirstOrDefault()?.Split(' ')?.FirstOrDefault()?.Trim() ?? string.Empty },
                         };
