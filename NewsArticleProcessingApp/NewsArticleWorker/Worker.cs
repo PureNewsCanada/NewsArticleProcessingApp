@@ -592,10 +592,10 @@ public class Worker
             var itemBson = ConvertToBsonDocument(itemDict);
 
             // Extract the news URL for checking existing records
-            var newsUrl = itemDict["url"].ToString();
+            var newsUrl = itemDict["native_url"].ToString();
 
             // Query for an existing record by URL
-            var filter = Builders<BsonDocument>.Filter.Eq("url", newsUrl);
+            var filter = Builders<BsonDocument>.Filter.Eq("native_url", newsUrl);
 
             // Check if a record with this URL already exists
             var existingRecord = await collection.Find(filter).FirstOrDefaultAsync();
