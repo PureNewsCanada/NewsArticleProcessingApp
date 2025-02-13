@@ -46,9 +46,9 @@ builder.Logging.AddApplicationInsights(
 );
 
 // Add a logging filter to only log error-level logs and exceptions
-builder.Logging.AddFilter<ApplicationInsightsLoggerProvider>("", LogLevel.None); // Exclude all by default
-builder.Logging.AddFilter<ApplicationInsightsLoggerProvider>("Microsoft", LogLevel.None); // Exclude system logs
-builder.Logging.AddFilter<ApplicationInsightsLoggerProvider>("NewsArticleOrchestrator", LogLevel.Error); // Log errors and above
+builder.Logging.AddFilter<ApplicationInsightsLoggerProvider>("", LogLevel.Error); // Exclude all by default
+builder.Logging.AddFilter<ApplicationInsightsLoggerProvider>("Microsoft", LogLevel.Error); // Exclude system logs
+builder.Logging.AddFilter<ApplicationInsightsLoggerProvider>("NewsArticleWorker", LogLevel.Error); // Log errors and above
 
 // Register additional services
 builder.Services.AddSingleton<Common.Lib.ScraperStatusRepository>();

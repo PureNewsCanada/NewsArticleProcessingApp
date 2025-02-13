@@ -475,7 +475,7 @@ public class Worker
                             { "provider_logo_url", tn.SelectSingleNode("./div/img")?.GetAttributeValue("srcset", string.Empty)?.Split(',')?.FirstOrDefault()?.Split(' ')?.FirstOrDefault()?.Trim() ?? string.Empty },
                             { "text", tn.SelectSingleNode("./div//time/@datetime")?.InnerText.Trim() ?? string.Empty },
                             { "location", new BsonDocument { { "country", countrySlug }, { "city", countrySlug } } },
-                            { "native_url", storyUrl },
+                            { "native_url", newsUrl },
                             { "url", newsUrl },
                             { "image_url", "https://news.google.com" + tn.SelectSingleNode("./figure/img")?.GetAttributeValue("srcset", string.Empty)?.Split(',')?.FirstOrDefault()?.Split(' ')?.FirstOrDefault()?.Trim() ?? string.Empty },
                             { "created", DateTime.UtcNow }, // Timestamp for created
@@ -557,7 +557,7 @@ public class Worker
             var collection = _mongoClient.GetDatabase(databaseName).GetCollection<BsonDocument>(collectionName);
 
             // Query the database for a document where the 'url' matches the given newsUrl
-            var filter = Builders<BsonDocument>.Filter.Eq("url", newsUrl);
+            var filter = Builders<BsonDocument>.Filter.Eq("native_url", newsUrl);
             var existingRecord = await collection.Find(filter).FirstOrDefaultAsync();
 
             if (existingRecord != null)
@@ -656,7 +656,7 @@ public class Worker
         }
         catch (Exception ex)
         {
-            LogException(ex, $"Error in InsertOrUpdateRecord for URL: {itemDict["url"]}");
+            LogException(ex, $"Error in InsertOrUpdateRecord for URL: {itemDict["native_url"]}");
         }
     }
 
